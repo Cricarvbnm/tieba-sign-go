@@ -13,7 +13,7 @@ import (
 var (
 	signURL       = domain + "/sign/add"
 	signURLMobile = "https://c.tieba.baidu.com/c/c/forum/sign"
-	forumURL      = domain + "/f"
+	// forumURL      = domain + "/f"
 )
 
 func filterUnsignedForums(forums []Forum) []Forum {
@@ -27,15 +27,23 @@ func filterUnsignedForums(forums []Forum) []Forum {
 }
 
 func fetchForumTbs(forumName string) (string, error) {
-	data, err := fetch("GET", fmt.Sprintf("%s?kw=%s", forumURL, forumName), nil)
+	tbsURL := "https://tieba.baidu.com/dc/common/tbs"
+	tbsJSONBytes, err := fetch("GET", tbsURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch forum tbs: %w", err)
+		return "", fmt.Errorf("failed to fetch tbs: %w", err)
 	}
 
-	forumHTML := string(data)
-	logForumHTML(forumName, forumHTML)
+	tbsStruct := struct {
+		Tbs     string `json:"tbs"`
+		IsLogin string `json:"is_login"`
+	}{}
+	if err := json.Unmarshal(tbsJSONBytes, &tbsStruct); err != nil {
+		return "", fmt.Errorf("failed to unmarshal tbs: %w", err)
+	} else if tbsStruct.IsLogin == "0" {
+		return "", fmt.Errorf("not logged in")
+	}
 
-	return parseTbs(string(forumHTML))
+	return tbsStruct.Tbs, nil
 }
 
 func parseTbs(forumHTML string) (string, error) {
