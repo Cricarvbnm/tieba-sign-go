@@ -4,34 +4,75 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 )
 
+var (
+	client *http.Client
+
+	domain = "https://tieba.baidu.com"
+)
+
+func initRequest() {
+	cookies, err := cookiejar.New(nil)
+	if err != nil {
+		panic(err)
+	}
+	client = &http.Client{Jar: cookies}
+
+	domainURL, _ := url.Parse(domain)
+	if config.Cookie == "" {
+		cookies.SetCookies(domainURL, []*http.Cookie{
+			{
+				Name:  "BDUSS",
+				Value: config.BDUSS,
+				Path:  "/",
+			},
+			{
+				Name:  "STOKEN",
+				Value: config.STOKEN,
+				Path:  "/",
+			},
+		})
+	}
+}
+
+func makeTiebaHeader() http.Header {
+	header := http.Header{
+		"Host":       []string{"tieba.baidu.com"},
+		"User-Agent": []string{config.UserAgent},
+	}
+	if config.Cookie != "" {
+		header.Add("Cookie", config.Cookie)
+	}
+	return header
+}
+
 func makeTiebaRequest(method string, url string, body io.Reader) *http.Request {
-	req, _ := http.NewRequest(method, url, body)
-	req.Header.Set("User-Agent", config.UserAgent)
-	req.Header.Set("Cookie", config.Cookie)
-	req.Header.Set("Host", "tieba.baidu.com")
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header = makeTiebaHeader()
 	return req
 }
 
-func fetchHtml(url string) (string, error) {
-	req := makeTiebaRequest("GET", url, nil)
-
+func fetch(method string, url string, body io.Reader) ([]byte, error) {
+	req := makeTiebaRequest(method, url, body)
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("请求失败: %w", err)
+		return nil, err
+	} else if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("status: %s", resp.Status)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("状态码异常: %d", resp.StatusCode)
-	}
-
-	buf, err := io.ReadAll(resp.Body)
-
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("读取响应失败: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return string(buf), nil
+	return bodyBytes, nil
 }

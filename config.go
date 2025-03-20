@@ -1,45 +1,44 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/pelletier/go-toml"
 )
 
+var (
+	configPath string
+	config     *Config
+)
+
 type Config struct {
 	Cookie    string `toml:"cookie"`
+	BDUSS     string `toml:"BDUSS"`
+	STOKEN    string `toml:"STOKEN"`
 	UserAgent string `toml:"user-agent"`
-	Request   struct {
-		Concurrency int `toml:"concurrency"`
-	} `toml:"request"`
 }
 
-func loadConfig() (*Config, error) {
+func initConfig() {
+	// get config path
 	configHome := os.Getenv("XDG_CONFIG_HOME")
 	if configHome == "" {
-		home, _ := os.UserHomeDir()
-		configHome = filepath.Join(home, ".config")
+		configHome = filepath.Join(os.Getenv("HOME"), ".config")
 	}
 
-	configDir := filepath.Join(configHome, "tieba-sign")
+	configPath = filepath.Join(configHome, "tieba-sign", "config.toml")
 
-	configFile := filepath.Join(configDir, "config.toml")
-	tree, err := toml.LoadFile(configFile)
+	// read
+	configBytes, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("加载配置文件失败: %w", err)
+		log.Fatalf("failed to read config file: %s: %s\n", configPath, err)
 	}
 
-	var config Config
-	if err := tree.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("解析配置文件失败: %w", err)
+	// unmarshal
+	config = &Config{}
+	err = toml.Unmarshal(configBytes, config)
+	if err != nil {
+		log.Fatalf("failed to unmarshal config file: %s: %s\n", configPath, err)
 	}
-
-	// default values
-	if config.Request.Concurrency <= 0 {
-		config.Request.Concurrency = 5
-	}
-
-	return &config, nil
 }

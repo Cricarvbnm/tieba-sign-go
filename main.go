@@ -1,146 +1,107 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"regexp"
-	"strings"
-	"sync"
+	"path/filepath"
 	"time"
-)
-
-var (
-	config       *Config
-	client       *http.Client
-	waitGroup    *sync.WaitGroup
-	semaphore    chan struct{}
-	successCount int = 0
 )
 
 var (
 	homepageLogger *log.Logger
 	forumsLogger   *log.Logger
-	signPostLogger *log.Logger
 )
 
-func init() {
-	// log
-	log.SetFlags(0)
-
-	homepageFile, err := os.OpenFile("log/homepage.log.html", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	homepageLogger = log.New(homepageFile, "", 0)
-
-	forumsFile, err := os.OpenFile("log/forums.log.html", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	forumsLogger = log.New(forumsFile, "", 0)
-
-	signPostFile, err := os.OpenFile("log/sign-post.log.json", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	signPostLogger = log.New(signPostFile, "", 0)
-
-	// config
-	config, err = loadConfig()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// request
-	waitGroup = &sync.WaitGroup{}
-	semaphore = make(chan struct{}, config.Request.Concurrency)
-
-	//client
-	client = &http.Client{}
-}
+var (
+	failedCount = 0
+)
 
 func main() {
-	html, err := fetchHtml("https://tieba.baidu.com")
+	// get homepage
+	homepageHTML, err := fetchHomepageHTML()
 	if err != nil {
 		log.Fatalln(err)
-	} else if isSecurityVerification(html) {
-		log.Fatalln("Cookie失效, 请重新获取, 已触发百度安全验证")
 	}
 
-	forums, err := parseForums(html)
+	// get forums
+	forums, err := parseForums(homepageHTML)
 	if err != nil {
 		log.Fatalln(err)
 	} else if len(forums) == 0 {
-		log.Fatalln("贴吧列表为空")
+		log.Println("warning: 没有找到关注的吧")
 	}
 
-	var unsignedForums []Forum
-	for _, forum := range forums {
-		if forum.IsSign == 0 {
-			unsignedForums = append(unsignedForums, forum)
-		}
+	// get unsigned forums
+	unsignedForums := filterUnsignedForums(forums)
+
+	// statistic
+	forumCount := len(forums)
+	unsignedForumsCount := len(unsignedForums)
+
+	if unsignedForumsCount == 0 {
+		log.Println("没有需要签到的吧")
+		return
+	} else {
+		log.Printf("待签到: %d/%d\n", unsignedForumsCount, forumCount)
 	}
 
-	log.Printf("还需签到贴吧数量: %d\n", len(unsignedForums))
+	// sign
 	for _, forum := range unsignedForums {
-		waitGroup.Add(1)
-		semaphore <- struct{}{}
-		sign(forum.Name) // 暂时不用并发
-
-		time.Sleep(1 * time.Second) // 避免请求过快
+		sign(forum.Name)
+		time.Sleep(1 * time.Second)
 	}
-	waitGroup.Wait()
 
-	log.Printf("签到成功统计: %d/%d\n", successCount, len(unsignedForums))
+	log.Printf("签到完成(失败/总签到数): %d/%d\n", failedCount, unsignedForumsCount)
 }
 
-type Forum struct {
-	Name   string `json:"forum_name"`
-	IsSign int    `json:"is_sign"`
+func init() {
+	initConfig()
+	initLogger()
+	initRequest()
 }
 
-func isSecurityVerification(html string) bool {
-	re := regexp.MustCompile(`<title>百度安全验证</title>`)
-	matches := re.FindStringSubmatch(html)
-	return len(matches) > 0
+func initLogger() {
+	log.SetFlags(0)
+
+	homepageLogger = log.New(openLogFile("homepage.html"), "", 0)
+	forumsLogger = log.New(openLogFile("forums.json"), "", 0)
+}
+
+func openLogFile(path string) *os.File {
+	// log path
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		dataHome = filepath.Join(os.Getenv("HOME"), ".local", "share")
+	}
+
+	logDir := filepath.Join(dataHome, "tieba-sign", "log")
+	path = filepath.Join(logDir, path)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		log.Fatalf("Failed to create log directory: %s: %s\n", logDir, err)
+	}
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open %s: %s\n", path, err)
+	}
+	return file
 }
 
 func sign(forumName string) {
-	defer waitGroup.Done()
-	defer func() { <-semaphore }()
-	defer signPostLogger.Println()
+	log.Println("正在签到:", forumName)
 
-	tbs, err := getTbs(forumName)
+	tbs, err := fetchForumTbs(forumName)
 	if err != nil {
-		log.Println(fmt.Errorf("获取tbs失败: %w", err))
-		doSignFailed(forumName)
+		failedCount++
+		log.Println("获取 tbs 失败:", err)
+		return
 	}
 
-	req := makeTiebaRequest(
-		"POST",
-		"https://tieba.baidu.com/sign/add",
-		strings.NewReader(fmt.Sprintf(`{"kw": %s, "ie": %s, "tbs": %s}`, forumName, "utf-8", tbs)),
-	)
-	signPostLogger.Println(req.Header)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println(fmt.Errorf("请求失败: %w", err))
-		doSignFailed(forumName)
+	if _, err := signForum(forumName, tbs, false); err != nil {
+		failedCount++
+		log.Println("签到失败:", err)
+	} else {
+		log.Println("签到完成:", forumName)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("状态码异常: %d", resp.StatusCode)
-		doSignFailed(forumName)
-	}
-
-	successCount++
-	log.Printf("签到成功: %s\n", forumName)
-}
-
-func doSignFailed(forumName string) {
-	log.Printf("签到失败: %s\n", forumName)
 }
