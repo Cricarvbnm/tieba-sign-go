@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -9,36 +9,41 @@ import (
 )
 
 var (
-	configPath string
-	config     *Config
+	config *Config
 )
 
 type Config struct {
-	Cookie    string `toml:"cookie"`
-	BDUSS     string `toml:"BDUSS"`
-	STOKEN    string `toml:"STOKEN"`
-	UserAgent string `toml:"user-agent"`
+	BDUSS  string
+	STOKEN string
 }
 
-func initConfig() {
-	// get config path
-	configHome := os.Getenv("XDG_CONFIG_HOME")
-	if configHome == "" {
-		configHome = filepath.Join(os.Getenv("HOME"), ".config")
-	}
-
-	configPath = filepath.Join(configHome, "tieba-sign", "config.toml")
-
-	// read
+func loadConfig() error {
+	// get path
+	configPath := filepath.Join(getConfigDir(), "config.toml")
 	configBytes, err := os.ReadFile(configPath)
 	if err != nil {
-		log.Fatalf("failed to read config file: %s: %s\n", configPath, err)
+		return fmt.Errorf("无法读取配置: %s: %w", configPath, err)
 	}
 
-	// unmarshal
+	// parse config
 	config = &Config{}
-	err = toml.Unmarshal(configBytes, config)
-	if err != nil {
-		log.Fatalf("failed to unmarshal config file: %s: %s\n", configPath, err)
+	if err := toml.Unmarshal(configBytes, config); err != nil {
+		return fmt.Errorf("无法解析配置: %s: %w", configPath, err)
+	} else if err := checkConfig(config); err != nil {
+		return fmt.Errorf("错误配置: %s: %w", configPath, err)
 	}
+
+	return nil
+}
+
+func checkConfig(config *Config) error {
+	if config.BDUSS == "" {
+		return fmt.Errorf("缺失BDUSS")
+	}
+
+	if config.STOKEN == "" {
+		return fmt.Errorf("缺失STOKEN")
+	}
+
+	return nil
 }

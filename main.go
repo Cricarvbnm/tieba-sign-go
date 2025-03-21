@@ -2,106 +2,88 @@ package main
 
 import (
 	"log"
-	"os"
-	"path/filepath"
-	"time"
+	"sync"
 )
 
 var (
-	homepageLogger *log.Logger
-	forumsLogger   *log.Logger
-)
+	forumCount         int
+	unsignedForumCount int
+	succeedCount       = 0
 
-var (
-	failedCount = 0
+	signWaitGroup = sync.WaitGroup{}
+	signSemaphore = make(chan any, 4)
 )
 
 func main() {
-	// get homepage
-	homepageHTML, err := fetchHomepageHTML()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	// get forums
-	forums, err := parseForums(homepageHTML)
+	forums, err := getForums()
 	if err != nil {
-		log.Fatalln(err)
-	} else if len(forums) == 0 {
-		log.Println("warning: 没有找到关注的吧")
+		ErrorLogger.Fatalln(err)
+	}
+	forumCount = len(forums)
+	if forumCount == 0 {
+		WarnLogger.Println("没有关注的吧")
+		return
 	}
 
-	// get unsigned forums
-	unsignedForums := filterUnsignedForums(forums)
+	// filter forums
+	forums = filterUnsignedForums(forums)
+	unsignedForumCount = len(forums)
+	if unsignedForumCount == 0 {
+		WarnLogger.Println("没有需要签到的吧")
+		return
+	}
 
 	// statistic
-	forumCount := len(forums)
-	unsignedForumsCount := len(unsignedForums)
+	log.Printf("未签/总关注数: %d/%d\n", unsignedForumCount, forumCount)
 
-	if unsignedForumsCount == 0 {
-		log.Println("没有需要签到的吧")
-		return
-	} else {
-		log.Printf("待签到: %d/%d\n", unsignedForumsCount, forumCount)
+	for _, forum := range forums {
+		signWaitGroup.Add(1)
+		signSemaphore <- struct{}{}
+		go sign(forum.Name)
 	}
+	signWaitGroup.Wait()
 
-	// sign
-	for _, forum := range unsignedForums {
-		sign(forum.Name)
-		time.Sleep(1 * time.Second)
-	}
-
-	log.Printf("签到完成(失败/总签到数): %d/%d\n", failedCount, unsignedForumsCount)
+	log.Printf("签到完成, 成功/总签到数: %d/%d\n", succeedCount, unsignedForumCount)
 }
 
 func init() {
-	initConfig()
-	initLogger()
-	initRequest()
+	if err := loadConfig(); err != nil {
+		ErrorLogger.Fatalln(err)
+	}
+	initLog()
+	initClient()
 }
 
-func initLogger() {
-	log.SetFlags(0)
-
-	homepageLogger = log.New(openLogFile("homepage.html"), "", 0)
-	forumsLogger = log.New(openLogFile("forums.json"), "", 0)
-}
-
-func openLogFile(path string) *os.File {
-	// log path
-	dataHome := os.Getenv("XDG_DATA_HOME")
-	if dataHome == "" {
-		dataHome = filepath.Join(os.Getenv("HOME"), ".local", "share")
+func filterUnsignedForums(forums []Forum) []Forum {
+	var unsignedForums []Forum
+	for _, forum := range forums {
+		if forum.IsSign == 0 {
+			unsignedForums = append(unsignedForums, forum)
+		}
 	}
-
-	logDir := filepath.Join(dataHome, "tieba-sign", "log")
-	path = filepath.Join(logDir, path)
-
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		log.Fatalf("Failed to create log directory: %s: %s\n", logDir, err)
-	}
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	if err != nil {
-		log.Fatalf("Failed to open %s: %s\n", path, err)
-	}
-	return file
+	return unsignedForums
 }
 
 func sign(forumName string) {
+	defer signWaitGroup.Done()
+	defer func() { <-signSemaphore }()
+
 	log.Println("正在签到:", forumName)
 
-	tbs, err := fetchForumTbs(forumName)
+	// get tbs
+	tbs, err := getTBS()
 	if err != nil {
-		failedCount++
-		log.Println("获取 tbs 失败:", err)
+		ErrorLogger.Println(err)
 		return
 	}
 
-	if _, err := signForum(forumName, tbs, false); err != nil {
-		failedCount++
-		log.Println("签到失败:", err)
-	} else {
-		log.Println("签到完成:", forumName)
+	// sign
+	if err := signForum(forumName, tbs); err != nil {
+		ErrorLogger.Println(err)
+		return
 	}
+
+	succeedCount++
+	log.Println("签到完成:", forumName)
 }
