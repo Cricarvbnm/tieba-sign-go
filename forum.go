@@ -35,11 +35,11 @@ func fetchForumTbs(forumName string) (string, error) {
 
 	tbsStruct := struct {
 		Tbs     string `json:"tbs"`
-		IsLogin string `json:"is_login"`
+		IsLogin int    `json:"is_login"`
 	}{}
 	if err := json.Unmarshal(tbsJSONBytes, &tbsStruct); err != nil {
 		return "", fmt.Errorf("failed to unmarshal tbs: %w", err)
-	} else if tbsStruct.IsLogin == "0" {
+	} else if tbsStruct.IsLogin == 0 {
 		return "", fmt.Errorf("not logged in")
 	}
 
