@@ -84,7 +84,7 @@ func signForum(forumName string, tbs string) error {
 	// request
 	respBody, err := client.Post(signURL, strings.NewReader(reqBody))
 	if err != nil {
-		return fmt.Errorf("签到失败: %w", err)
+		return fmt.Errorf("签到失败: %s: %w", forumName, err)
 	}
 	if err := logToFile(logDir+"/resp-body.json", respBody); err != nil {
 		return err
@@ -95,9 +95,9 @@ func signForum(forumName string, tbs string) error {
 		Error string `json:"error"`
 	}{}
 	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return fmt.Errorf("签到失败: %w", err)
+		return fmt.Errorf("签到失败: %s: %w", forumName, err)
 	} else if resp.Error != "" {
-		return fmt.Errorf("签到失败: %s", resp.Error)
+		return fmt.Errorf("签到失败: %s: %s", forumName, resp.Error)
 	}
 
 	return nil
