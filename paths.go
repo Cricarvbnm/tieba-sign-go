@@ -13,12 +13,12 @@ func getConfigHome() string {
 	return configHome
 }
 
-func getDataHome() string {
-	dataHome := os.Getenv("XDG_DATA_HOME")
-	if dataHome == "" {
-		dataHome = filepath.Join(os.Getenv("HOME"), ".local", "share")
+func getStateHome() string {
+	stateHome := os.Getenv("XDG_STATE_HOME")
+	if stateHome == "" {
+		stateHome = filepath.Join(os.Getenv("HOME"), ".local", "state")
 	}
-	return dataHome
+	return stateHome
 }
 
 func getConfigDir() string {
@@ -26,12 +26,12 @@ func getConfigDir() string {
 	return configDir
 }
 
-func getDataDir() string {
-	dataDir := filepath.Join(getDataHome(), "tieba-sign")
-	return dataDir
+func getStateDir() string {
+	stateDir := filepath.Join(getStateHome(), "tieba-sign")
+	return stateDir
 }
 
 func getLogDir() string {
-	logDir := filepath.Join(getDataDir(), "log")
+	logDir := filepath.Join(getStateDir(), "log")
 	return logDir
 }
