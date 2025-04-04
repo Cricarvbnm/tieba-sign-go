@@ -11,7 +11,7 @@ var (
 	succeedCount       = 0
 
 	signWaitGroup = sync.WaitGroup{}
-	signSemaphore = make(chan any, 4)
+	signTasks     = make(chan string)
 )
 
 func main() {
@@ -37,11 +37,23 @@ func main() {
 	// statistic
 	log.Printf("未签/总关注数: %d/%d\n", unsignedForumCount, forumCount)
 
-	for _, forum := range forums {
-		signWaitGroup.Add(1)
-		signSemaphore <- struct{}{}
-		go sign(forum.Name)
+	// task provider goroutine
+	signWaitGroup.Add(unsignedForumCount)
+	go func() {
+		for _, forum := range forums {
+			signTasks <- forum.Name
+		}
+	}()
+
+	// task worker goroutines
+	for range 4 {
+		go func() {
+			for forumName := range signTasks {
+				sign(forumName)
+			}
+		}()
 	}
+
 	signWaitGroup.Wait()
 
 	log.Printf("签到完成, 成功/总签到数: %d/%d\n", succeedCount, unsignedForumCount)
@@ -67,7 +79,6 @@ func filterUnsignedForums(forums []Forum) []Forum {
 
 func sign(forumName string) {
 	defer signWaitGroup.Done()
-	defer func() { <-signSemaphore }()
 
 	log.Println("正在签到:", forumName)
 
