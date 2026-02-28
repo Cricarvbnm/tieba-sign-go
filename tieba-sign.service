@@ -1,0 +1,7 @@
+[Unit]
+After = network-online.target
+
+[Service]
+ExecStart = tieba-sign
+Restart = no
+Type = oneshot
