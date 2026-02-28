@@ -2,3 +2,9 @@
 
 log/
 tests/
+
+*.zip
+*.pkg.*
+*.tar.*
+src/
+pkg/
