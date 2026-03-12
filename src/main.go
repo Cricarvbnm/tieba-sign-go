@@ -54,7 +54,7 @@ func main() {
 
 	wg.Wait()
 
-	log.Info.Printf("签到完成, 成功: %d/%d\n", signer.SucceedTotal(), unsigned)
+	log.Info.Printf("签到完成, 失败: %d/%d\n", signer.FailTotal(), unsigned)
 }
 
 func configLoad() *config.Config {
