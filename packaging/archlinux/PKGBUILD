@@ -1,5 +1,5 @@
 pkgname=tieba-sign
-pkgver=2.0.0
+pkgver=2.0.1
 pkgrel=1
 
 arch=(any)
@@ -17,5 +17,5 @@ package() {
   install -Dm 0644 -t "$pkgdir/usr/lib/systemd/user" "$srcdir/$_repo_dir"/packaging/common/systemd/tieba-sign.{service,timer}
 }
 
-source=(https://github.com/Cricarvbnm/tieba-sign-go/archive/refs/tags/v2.0.0.zip)
-sha256sums=('7c778238ecd4030ed971c489b5309910066d6b87f6c4f323d324e8ad1b337595')
+source=(https://github.com/Cricarvbnm/tieba-sign-go/archive/refs/tags/v2.0.1.zip)
+sha256sums=('6b96db05597a559e2500136c4a5f8bdb45145d6d7130ef7311a3bc03296a7278')
