@@ -3,5 +3,7 @@
 log/
 tests/
 
+src/tieba-sign
+
 AGENTS.md
 opencode-resume
