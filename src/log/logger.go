@@ -7,10 +7,25 @@ import (
 	"path/filepath"
 )
 
+const (
+	EMERG   = "EMERG: "
+	ALERT   = "ALERT: "
+	CRIT    = "CRIT: "
+	ERR     = "ERR: "
+	WARNING = "WARNING: "
+	NOTICE  = "NOTICE: "
+	INFO    = "INFO: "
+	DEBUG   = "DEBUG: "
+)
+
 var (
-	Info  = log.New(os.Stdout, "", 0)
-	Warn  = log.New(os.Stdout, "WARN: ", log.Lshortfile)
-	Error = log.New(os.Stderr, "ERROR: ", log.Lshortfile)
+	Notice  = log.New(os.Stdout, NOTICE, 0)
+	Info    = log.New(os.Stdout, INFO, 0)
+	Warning = log.New(os.Stdout, WARNING, log.Lshortfile)
+	Err     = log.New(os.Stderr, ERR, log.Lshortfile)
+	Crit    = log.New(os.Stderr, CRIT, log.Lshortfile)
+	Fatal   = log.New(os.Stderr, CRIT, log.Lshortfile)
+	Debug   = log.New(os.Stdout, DEBUG, log.Lshortfile)
 )
 
 func Home() string {

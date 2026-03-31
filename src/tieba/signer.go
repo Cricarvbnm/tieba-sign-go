@@ -33,7 +33,7 @@ func (s *Signer) ForumSign(forumName string) error {
 		return err
 	}
 
-	log.Info.Println("签到完成:", forumName)
+	log.Notice.Println("签到完成:", forumName)
 	return nil
 }
 
