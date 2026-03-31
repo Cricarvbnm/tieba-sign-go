@@ -16,6 +16,8 @@ const (
 )
 
 func ForumsFetch(tbClient *client.Client) ([]Forum, error) {
+	log.Info.Println("正在获取关注贴吧列表")
+
 	respBody, err := tbClient.Get(forumsURL)
 	if err != nil {
 		return nil, fmt.Errorf("无法获取关注贴吧列表: %w", err)
@@ -44,6 +46,8 @@ func ForumsFetch(tbClient *client.Client) ([]Forum, error) {
 }
 
 func TBSFetch(tbClient *client.Client) (string, error) {
+	log.Info.Println("正在获取 TBS")
+
 	respBody, err := tbClient.Get(tbsURL)
 	if err != nil {
 		return "", fmt.Errorf("无法获取 TBS: %w", err)
@@ -70,6 +74,8 @@ func TBSFetch(tbClient *client.Client) (string, error) {
 }
 
 func ForumSign(tbClient *client.Client, forumName string, tbs string) error {
+	log.Info.Println("正在签到:", forumName)
+
 	const signURL = "https://tieba.baidu.com/sign/add"
 
 	reqBody := url.Values{

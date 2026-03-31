@@ -77,8 +77,6 @@ func forumsFetch(tbClient *client.Client) []tieba.Forum {
 }
 
 func forumSign(signer *tieba.Signer, forumName string) {
-	log.Info.Println("正在签到:", forumName)
-
 	if err := signer.ForumSign(forumName); err != nil {
 		log.Err.Println(err)
 		return

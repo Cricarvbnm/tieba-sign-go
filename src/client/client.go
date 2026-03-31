@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+
+	"tieba-sign/log"
 )
 
 const (
@@ -51,6 +53,8 @@ func (c *Client) Post(url string, body io.Reader) ([]byte, error) {
 }
 
 func (c *Client) fetch(method string, url string, body io.Reader) ([]byte, error) {
+	log.Debug.Printf("%s %s", method, url)
+
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("无法创建请求: %w", err)
@@ -64,9 +68,12 @@ func (c *Client) fetch(method string, url string, body io.Reader) ([]byte, error
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.Debug.Printf("%s %s -> error: %v", method, url, err)
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 	defer resp.Body.Close()
+
+	log.Debug.Printf("%s %s -> %d", method, url, resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("请求失败: %s", resp.Status)
