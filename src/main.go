@@ -11,6 +11,11 @@ import (
 
 func main() {
 	cfg := configLoad()
+
+	if cfg.Log.Level != "" {
+		log.SetLevel(cfg.Log.Level)
+	}
+
 	tbClient := client.New(cfg.BDUSS, cfg.STOKEN)
 
 	forums := forumsFetch(tbClient)

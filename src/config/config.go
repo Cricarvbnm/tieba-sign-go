@@ -11,6 +11,11 @@ import (
 type Config struct {
 	BDUSS  string
 	STOKEN string
+	Log    LogConfig
+}
+
+type LogConfig struct {
+	Level string
 }
 
 func Load(path string) (*Config, error) {
