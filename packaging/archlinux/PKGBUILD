@@ -1,5 +1,5 @@
 pkgname=tieba-sign
-pkgver=2.0.1
+pkgver=2.1.0
 pkgrel=1
 
 arch=(any)
@@ -8,14 +8,14 @@ _repo_dir="tieba-sign-go-$pkgver"
 
 makedepends=(go)
 build() {
-  cd "$_repo_dir/src" || exit 1
-  go build
+    cd "$_repo_dir/src" || exit 1
+    go build
 }
 
 package() {
-  install -Dm 0755 -t "$pkgdir/usr/bin" "$srcdir/$_repo_dir/src/tieba-sign"
-  install -Dm 0644 -t "$pkgdir/usr/lib/systemd/user" "$srcdir/$_repo_dir"/packaging/common/systemd/tieba-sign.{service,timer}
+    install -Dm 0755 -t "$pkgdir/usr/bin" "$srcdir/$_repo_dir/src/tieba-sign"
+    install -Dm 0644 -t "$pkgdir/usr/lib/systemd/user" "$srcdir/$_repo_dir"/packaging/common/systemd/tieba-sign.{service,timer}
 }
 
-source=(https://github.com/Cricarvbnm/tieba-sign-go/archive/refs/tags/v2.0.1.zip)
-sha256sums=('6b96db05597a559e2500136c4a5f8bdb45145d6d7130ef7311a3bc03296a7278')
+source=(https://github.com/Cricarvbnm/tieba-sign-go/archive/refs/tags/v$pkgver.zip)
+sha256sums=('f00468d6a2f753a81cfe16192c7c1d9e857641a70c8bd6e1690427557d6410aa')
