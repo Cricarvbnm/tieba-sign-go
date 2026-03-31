@@ -1,5 +1,5 @@
 pkgname=tieba-sign
-pkgver=2.1.0
+pkgver=2.2.0
 pkgrel=1
 
 arch=(any)
@@ -18,4 +18,4 @@ package() {
 }
 
 source=(https://github.com/Cricarvbnm/tieba-sign-go/archive/refs/tags/v$pkgver.zip)
-sha256sums=('f00468d6a2f753a81cfe16192c7c1d9e857641a70c8bd6e1690427557d6410aa')
+sha256sums=('9b41792c46be4c8766801a5522e5a87faddbc4de5a5eed5b7a95b53fc7a90223')
