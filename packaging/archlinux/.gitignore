@@ -1,4 +1,2 @@
-*.tar.*
-*.zip
-src/
-pkg/
+*
+!PKGBUILD
